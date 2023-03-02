@@ -1,10 +1,11 @@
-.model-small
-.org 100h
+.model small
+.stack 100h
+.data
 .code
 ; Get a series of characters from the keyboard
 ; and store them in stack
 keyPress PROC
-        MOV     AH,8            
+        MOV     AH,08H            
         INT     21H
         CALL    toLower
         RET
@@ -23,38 +24,51 @@ toLower ENDP
 
 ; Print the stack
 PRINT PROC
+    beginPrint:
         CMP    CX, 0 ;if the counter is 0 then there is nothing to print
-        JE     EXIT
-        MOV    AH, 9 ;print a character
-        POP    AL ;get the character from the stack
+        JE     leavePrint 
+        ADD    BP,2
+        MOV    AX,[BP-2] ;get the character from the stack
+        MOV    DL, AL
+        MOV    AH, 02H 
         INT    21H ;print the character
-        JMP    PRINT ;print the next character
-    
-    EXIT:
+        DEC    CX 
+        JMP    beginPrint ;print the next character
+    leavePrint:
         RET
 PRINT ENDP
+
+
 player PROC
+    push    bp
+    mov     bp,sp
+    MOV     CX, 0 
     BEGIN:
         CALL    keyPress
         CMP     AL, 27 ; ESC
-        JE      EXIT
+        JNE     KEYED
+        RET
+    
+    KEYED:    
         ;if the key is p then move onto printing the stack
         CMP     AL, 'p' ; 
-        JE      toPrint
-        PUSH    AL  ;save the key pressed in the stack
+        JNE     SAVEKEY
+        CALL    PRINT
+        MOV     sp,bp       ;restore sp
+        POP     bp 
+        RET
+    
+    SAVEKEY:
+        PUSH    AX  ;save the key pressed in the stack
+        SUB     BP,02
         INC     CX  ;increment the counter
         JMP     BEGIN
-    EXIT:
-        RET
-    toPrint:
-        CALL    PRINT
-        RET
+
 player ENDP
 start:
     MOV     AX, @data
     MOV     DS, AX
-    MOV     CX, 0
-    CALL    player
+    CALL    player    
     MOV     AX, 4C00H
     INT     21H
 END start
