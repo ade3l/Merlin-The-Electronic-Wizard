@@ -17,7 +17,8 @@ playerSize  db  0
 dealerRow   db  5
 dealerCol   db  1
 currDCard   dW  0 
-deck        db  65,50,51,52,53,54,55,56,56,74,81,75
+deck        db  65,50,51,52,53,54,55,56,56,74,81,75,42
+firstDCard  db  0
 .code               
 
 printStr  MACRO row, column
@@ -130,28 +131,42 @@ dealPlayer    PROC
 dealPlayer    ENDP
     
 
-dispDHand     PROC
-    ;move this print out of the fn to save calculations
+dispDHand     PROC 
+    cmp     firstDcard, 0
+    jne     dispNextDcard
     LEA     BP, DHandMsg
-    printStr   3,1   
-    MOV     BL, dealerSize
-    LEA     DX, dealerHand
-    ADD     DX, currDCard
-    MOV     SI, DX 
-    SUB     BX, currDCard 
-    dh1:
-      MOV       AL, [SI] 
-      setCursor dealerRow, dealerCol
-      dispCard  AL, dealerRow, dealerCol  
-      INC       currDCard
-      INC       dealerCol
-      INC       SI
-      DEC       BL
-      CMP       BL, 1 
-      JNE       dh1
-             
+    printStr   3,1
     
-    RET
+    dispNextDcard:   
+        MOV     BL, dealerSize
+        LEA     DX, dealerHand
+        ADD     DX, currDCard
+        MOV     SI, DX 
+        SUB     BX, currDCard 
+        dh1:
+          CMP       BL, 1
+          JE        exdispDHand 
+          MOV       AL, [SI] 
+          setCursor dealerRow, dealerCol
+          cmp       firstDcard, 0
+          je        dispMask
+          dispCard  AL, dealerRow, dealerCol 
+          
+          updateDvals:   
+              INC       currDCard
+              INC       dealerCol
+              INC       SI
+              DEC       BL
+              JMP       dh1
+        
+        dispMask:
+           MOV      AL, 13
+           dispCard AL, dealerRow, dealerCol
+           INC      firstDCard
+           jmp      updateDvals                              
+   
+    exdispDHand:    
+        RET
 dispDHand     ENDP 
 
 strLen  PROC  
