@@ -21,7 +21,6 @@ playerCol   db  1
 currDCard   dW  0
 currPCard   dW  0 
 deck        db  65,50,51,52,53,54,55,56,56,74,81,75,42
-firstDCard  db  0
 .code               
 
 printStr  MACRO row, column
@@ -96,16 +95,15 @@ start:
     LEA     BP, PHandMsg
     printStr   7,1 
     
+;Initialise the game
     CALL    createSeed
     CALL    dealDealer
     CALL    dealDealer
-    CALL    dispDHand
-    CALL    dispDHand
     CALL    dealPlayer
-    CALL    dealPlayer 
+    CALL    dealPlayer
+    CALL    dispDHand 
     CALL    dispPHand
-    CALL    dealDealer
-    CALL    dispDHand
+
     MOV     AX, 4C00H
     INT     21H 
 
@@ -154,7 +152,7 @@ dispDHand     PROC
           JE        exdispDHand 
           MOV       AL, [SI] 
           setCursor dealerRow, dealerCol
-          cmp       firstDcard, 0
+          cmp       currDCard, 1
           je        dispMask
           dispCard  AL 
           
@@ -168,7 +166,6 @@ dispDHand     PROC
         dispMask:
            MOV      AL, 13
            dispCard AL, dealerRow, dealerCol
-           INC      firstDCard
            jmp      updateDvals                              
    
     exdispDHand:    
@@ -196,6 +193,47 @@ dispPHand   PROC
         RET                  
 
 dispPHand   ENDP
+
+checkP21     PROC
+   saveRegs
+   MOV      BX, 00  ;TOTAL VALUE
+   MOV      CX, 00  ;TOTAL NUMBER OF ACES
+   LEA      DX, playerHand
+   MOV      SI, DX
+   ch1:
+    MOV     AX, [SI]
+    INC     SI
+    CMP     AX, 0   
+    JE      calcP
+    CMP     AX, 1   ;check if ace. Value of ACE's will be calculated at the end
+    JE      ACE1
+    
+    ADD     BX, AX  ;add value of non-ace card to the total
+    JMP     ch1
+   
+   ACE1:
+    INC     CX
+    JMP     ch1
+    
+   addAce1:
+    ADD     BX, 11
+    DEC     CX
+     
+   calcP:
+    CMP     CX, 0   ;check if there are any aces. if not then leave
+    JE      exChp21
+    CMP     BX, 10  ;check if current total is <= 10
+    JLE     addAce  ;if it is then add 11 for that ACE's values
+    ch2: 
+        ADD     BX, 1 ;otherwise add 1 for it's value
+        LOOP    ch2    
+    
+   exChp21    
+    restoreRegs
+    RET
+checkP21     ENDP
+
+   
 strLen  PROC  
     INC     CX
     MOV     AX,[SI]
