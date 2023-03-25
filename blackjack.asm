@@ -4,7 +4,7 @@
 mult        DW  25173
 incr        DW  13849          
 SEED        DW  ?
-uLimit      DB  13
+uLimit      DB  12
 lLimit      DB  1
 welcome     DB  'Welcome to Blackjack$' 
 DHandMsg    DB  'Dealers Hand$'
@@ -16,7 +16,8 @@ dealerSize  db  0
 playerSize  db  0 
 dealerRow   db  5
 dealerCol   db  1
-currDCard   dW  0
+currDCard   dW  0 
+deck        db  65,50,51,52,53,54,55,56,56,74,81,75
 .code               
 
 printStr  MACRO row, column
@@ -39,9 +40,11 @@ saveRegs    MACRO
     PUSH    BX
     PUSH    CX
     PUSH    DX
+    PUSH    SI
 endm  
 
 restoreRegs MACRO
+    POP     SI
     POP     DX
     POP     CX
     POP     BX
@@ -58,12 +61,20 @@ endm
 
 dispCard    MACRO   cardNum, Drow, Dcol   
     saveRegs
-    MOV     AH, 09H
+    MOV     AH, 0 
+    LEA     DX, deck
     MOV     AL, cardNum
+    DEC     AL
+    ADD     DX, AX
+    MOV     SI, DX
+    MOV     AL, [SI]
+
+    MOV     AH, 09H
     MOV     BX, 2
-    ADD     AL,'0'
     MOV     CX, 1
     INT     10H
+
+
     restoreRegs
 endm
 
@@ -120,6 +131,7 @@ dealPlayer    ENDP
     
 
 dispDHand     PROC
+    ;move this print out of the fn to save calculations
     LEA     BP, DHandMsg
     printStr   3,1   
     MOV     BL, dealerSize
@@ -130,13 +142,12 @@ dispDHand     PROC
     dh1:
       MOV       AL, [SI] 
       setCursor dealerRow, dealerCol
-      dispCard  AL, dealerRow, dealerCol 
+      dispCard  AL, dealerRow, dealerCol  
       INC       currDCard
       INC       dealerCol
       INC       SI
       DEC       BL
       CMP       BL, 1 
-      setCursor   4,2
       JNE       dh1
              
     
