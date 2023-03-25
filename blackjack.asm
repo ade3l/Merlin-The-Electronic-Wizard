@@ -14,9 +14,12 @@ dealerHand  db  5 dup (0)
 playerHand  db  5 dup (0)
 dealerSize  db  0
 playerSize  db  0 
-dealerRow   db  5
+dealerRow   db  4
 dealerCol   db  1
-currDCard   dW  0 
+playerRow   db  8
+playerCol   db  1
+currDCard   dW  0
+currPCard   dW  0 
 deck        db  65,50,51,52,53,54,55,56,56,74,81,75,42
 firstDCard  db  0
 .code               
@@ -60,7 +63,7 @@ setCursor   MACRO   row, column
     restoreRegs
 endm 
 
-dispCard    MACRO   cardNum, Drow, Dcol   
+dispCard    MACRO   cardNum  
     saveRegs
     MOV     AH, 0 
     LEA     DX, deck
@@ -84,16 +87,24 @@ start:
     MOV     DS, AX
     MOV     ES, AX
     PUSH    BP
-    MOV     bp,sp  
+    MOV     bp,sp
+      
     LEA     BP, welcome
-    printStr   1,1     
+    printStr   1,1
+    LEA     BP, DHandMsg
+    printStr   3,1              
+    LEA     BP, PHandMsg
+    printStr   7,1 
+    
     CALL    createSeed
     CALL    dealDealer
     CALL    dealDealer
     CALL    dispDHand
-    CALL    dealDealer
-    CALL    dealDealer
+    CALL    dispDHand
+    CALL    dealPlayer
     CALL    dealPlayer 
+    CALL    dispPHand
+    CALL    dealDealer
     CALL    dispDHand
     MOV     AX, 4C00H
     INT     21H 
@@ -126,17 +137,12 @@ dealPlayer    PROC
     POP     DX
     MOV     [SI], DL
     
-    INC     dealerSize
+    INC     playerSize
     RET
 dealPlayer    ENDP
     
 
-dispDHand     PROC 
-    cmp     firstDcard, 0
-    jne     dispNextDcard
-    LEA     BP, DHandMsg
-    printStr   3,1
-    
+dispDHand     PROC     
     dispNextDcard:   
         MOV     BL, dealerSize
         LEA     DX, dealerHand
@@ -144,13 +150,13 @@ dispDHand     PROC
         MOV     SI, DX 
         SUB     BX, currDCard 
         dh1:
-          CMP       BL, 1
+          CMP       BL, 0
           JE        exdispDHand 
           MOV       AL, [SI] 
           setCursor dealerRow, dealerCol
           cmp       firstDcard, 0
           je        dispMask
-          dispCard  AL, dealerRow, dealerCol 
+          dispCard  AL 
           
           updateDvals:   
               INC       currDCard
@@ -169,6 +175,27 @@ dispDHand     PROC
         RET
 dispDHand     ENDP 
 
+dispPHand   PROC
+    MOV     BL, playerSize
+    LEA     DX, playerSize
+    ADD     DX, currPCard
+    MOV     SI, DX 
+    SUB     BX, currPCard
+    dh2:
+          CMP       BL, 0
+          JE        exdispPHand 
+          MOV       AL, [SI] 
+          setCursor playerRow, playerCol
+          dispCard  AL
+          INC       currPCard
+          INC       playerCol
+          INC       SI
+          DEC       BL
+          JMP       dh2 
+    exdispPHand:    
+        RET                  
+
+dispPHand   ENDP
 strLen  PROC  
     INC     CX
     MOV     AX,[SI]
