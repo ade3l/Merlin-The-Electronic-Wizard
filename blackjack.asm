@@ -9,6 +9,7 @@ lLimit      DB  1
 welcome     DB  'Welcome to Blackjack$' 
 DHandMsg    DB  'Dealers Hand$'
 PHandMSg    DB  'Your Hand$'
+PTotalMSg    DB  'Your Total:$'
 round       DB  0
 dealerHand  db  5 dup (0)
 playerHand  db  5 dup (0)
@@ -16,11 +17,12 @@ dealerSize  db  0
 playerSize  db  0 
 dealerRow   db  4
 dealerCol   db  1
-playerRow   db  8
+playerRow   db  7
 playerCol   db  1
 currDCard   dW  0
 currPCard   dW  0 
 deck        db  65,50,51,52,53,54,55,56,56,74,81,75,42
+pScore db  0
 .code               
 
 printStr  MACRO row, column
@@ -80,7 +82,7 @@ dispCard    MACRO   cardNum
 
     restoreRegs
 endm
-
+;---------------------------------------------------------------------------------------
 start:    
     MOV     AX, @data
     MOV     DS, AX
@@ -93,8 +95,9 @@ start:
     LEA     BP, DHandMsg
     printStr   3,1              
     LEA     BP, PHandMsg
-    printStr   7,1 
-    
+    printStr   6,1 
+    LEA     BP, PTotalMsg
+    printStr   14,15
 ;Initialise the game
     CALL    createSeed
     CALL    dealDealer
@@ -103,10 +106,10 @@ start:
     CALL    dealPlayer
     CALL    dispDHand 
     CALL    dispPHand
-
+    CALL    checkP21
     MOV     AX, 4C00H
     INT     21H 
-
+;---------------------------------------------------------------------------------------
 dealDealer    PROC    
     ;dealerHand
     CALL    genRand 
@@ -174,7 +177,7 @@ dispDHand     ENDP
 
 dispPHand   PROC
     MOV     BL, playerSize
-    LEA     DX, playerSize
+    LEA     DX, playerHand
     ADD     DX, currPCard
     MOV     SI, DX 
     SUB     BX, currPCard
@@ -208,32 +211,71 @@ checkP21     PROC
     CMP     AX, 1   ;check if ace. Value of ACE's will be calculated at the end
     JE      ACE1
     
-    ADD     BX, AX  ;add value of non-ace card to the total
+    ADD     BL, AL  ;add value of non-ace card to the total
     JMP     ch1
    
    ACE1:
-    INC     CX
+    INC     CL
     JMP     ch1
     
    addAce1:
-    ADD     BX, 11
-    DEC     CX
+    ADD     BL, 11
+    DEC     CL
      
    calcP:
-    CMP     CX, 0   ;check if there are any aces. if not then leave
+    CMP     CL, 0   ;check if there are any aces. if not then leave
     JE      exChp21
-    CMP     BX, 10  ;check if current total is <= 10
-    JLE     addAce  ;if it is then add 11 for that ACE's values
+    CMP     BL, 10  ;check if current total is <= 10
+    JLE     addAce1  ;if it is then add 11 for that ACE's values
     ch2: 
-        ADD     BX, 1 ;otherwise add 1 for it's value
+        ADD     BL, 1 ;otherwise add 1 for it's value
         LOOP    ch2    
     
-   exChp21    
+   exChp21:
+    MOV     pScore, BL
+    CALL    updatePScore    
     restoreRegs
     RET
 checkP21     ENDP
 
-   
+updatePScore     PROC
+    saveRegs
+    XOR     CX, CX
+     
+    MOV AL, pScore
+    ; Convert the hex value to decimal and store the digits in the stack
+    MOV AH, 0         ; Initialize the quotient to 0
+    MOV CX, 10        ; Initialize the divisor to 10 
+    DIV_LOOP:
+        XOR DX, DX        ; Clear the DX register
+        DIV CX            ; Divide the quotient by the divisor
+        ADD DL, '0'       ; Convert the remainder to ASCII
+        PUSH DX           ; Save the digit on the stack
+        CMP AL, 0         ; Check if the quotient is 0
+        JNE DIV_LOOP      ; If not, continue dividing
+    CMP pScore, 9
+    JA  PRINT
+    MOV AX, 30H
+    PUSH    AX
+    PRINT:
+        setCursor   14, 28
+        ; Pop each digit from the stack and print it to the screen
+        POP AX
+        MOV AH, 09H ; Set up the function code for printing a character
+        MOV CX, 1
+        MOV BL, 2
+        INT 10H     ; Call the BIOS to print the character
+        setCursor   14, 29
+        ; Pop each digit from the stack and print it to the screen
+        POP AX
+        MOV AH, 09H ; Set up the function code for printing a character
+        MOV CX, 1
+        MOV BL, 2
+        INT 10H     ; Call the BIOS to print the character
+    restoreRegs
+    RET  
+updatePScore    ENDP
+
 strLen  PROC  
     INC     CX
     MOV     AX,[SI]
