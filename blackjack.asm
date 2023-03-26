@@ -9,7 +9,12 @@ lLimit      DB  1
 welcome     DB  'Welcome to Blackjack$' 
 DHandMsg    DB  'Dealers Hand$'
 PHandMSg    DB  'Your Hand$'
-PTotalMSg    DB  'Your Total:$'
+PTotalMSg    DB  'Your Total:$' 
+
+msgPbust    db "Bust! You lose!$"
+msgPwin     db "Blackjack! You win!$"
+;msgPcontinue db "Your score is less than 21. Continue playing.$", 0
+msgClear    db "                       $"    
 round       DB  0
 dealerHand  db  5 dup (0)
 playerHand  db  5 dup (0)
@@ -101,12 +106,13 @@ start:
 ;Initialise the game
     CALL    createSeed
     CALL    dealDealer
-    CALL    dealDealer
     CALL    dealPlayer
+    CALL    dealDealer
     CALL    dealPlayer
     CALL    dispDHand 
     CALL    dispPHand
     CALL    checkP21
+    
     MOV     AX, 4C00H
     INT     21H 
 ;---------------------------------------------------------------------------------------
@@ -201,6 +207,7 @@ checkP21     PROC
    saveRegs
    MOV      BX, 00  ;TOTAL VALUE
    MOV      CX, 00  ;TOTAL NUMBER OF ACES
+   XOR      AX, AX
    LEA      DX, playerHand
    MOV      SI, DX
    ch1:
@@ -233,7 +240,8 @@ checkP21     PROC
     
    exChp21:
     MOV     pScore, BL
-    CALL    updatePScore    
+    CALL    updatePScore
+    CALL    checkPScore    
     restoreRegs
     RET
 checkP21     ENDP
@@ -276,6 +284,41 @@ updatePScore     PROC
     RET  
 updatePScore    ENDP
 
+checkPScore PROC
+    saveRegs
+    CMP pScore, 21
+    JA pBust
+
+    ; Check if Pscore is equal to 21
+    CMP pScore, 21
+    JE pWin
+
+    ; If Pscore is less than 21, continue the game
+    JMP pContinue
+    
+    pBust:
+        ; Player has bust and lost the game
+        LEA         BP, msgPbust
+        printstr    18, 40
+        CALL        endGame
+    pWin:
+        LEA         BP, msgPwin
+        printstr    18, 40
+        CALL        endGame     
+    
+    pContinue:
+        restoreRegs
+
+    RET
+checkPScore ENDP
+
+
+
+endGame     PROC
+    MOV     AX, 4C00H
+    INT     21H
+endGame     ENDP
+    
 strLen  PROC  
     INC     CX
     MOV     AX,[SI]
