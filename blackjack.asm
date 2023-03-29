@@ -603,8 +603,6 @@ createSeed PROC
     POP     AX 
     RET
 createSeed ENDP
-    
-
-        
+      
 END
 
