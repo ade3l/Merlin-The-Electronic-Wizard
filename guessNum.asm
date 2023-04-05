@@ -19,14 +19,25 @@ l2_msg_len EQU $-l2_msg
 l3_msg db "Mystery number is between 1000 - 9999" 
 l3_msg_len EQU $-l3_msg 
 
-win_msg dw "You have won!"
+win_msg db "You have won!"
 win_msg_len EQU $-win_msg
+
+next_msg db "Next round(n) or Quit(q)"
+next_msg_len dw 24  
+
+correct_msg db "Number of digits in correct position:"
+correct_msg_len equ $-correct_msg
+
+wrong_msg db "Number of digits in wrong position:"
+wrong_msg_len equ $-wrong_msg
+
 user_input dw "0000"
 secLen dw ? 
 diff db ?  
 secret db "0000"
 temp db "0000"
 correct_pos db 0
+wrong_pos db 0
 .code 
 saveRegs    MACRO
     PUSH    AX
@@ -100,12 +111,75 @@ start:
     
     lea bp, secret
     printstr 5,1, secLen
-    
-    call showHidden
-    call getInputs
-    call evaluateInputs
+    round:
+        call showHidden
+        call getInputs
+        call evaluateInputs
+        call showStatus
+        call askNext
+        
+        jmp round
     MOV     AX, 4C00H
-    INT     21H 
+    INT     21H
+    
+askNext proc 
+    saveRegs
+    MOV BP,OFFSET next_msg 
+    printStr    20, 1, next_msg_len
+    call keyPress
+    cmp al, 'n'
+    je choice_next
+    choice_next:
+        mov ah, 02h
+        mov dh, 17
+        mov dl, 1
+        add dl, correct_msg_len
+        int 10h
+        mov ah, 0eh
+        mov al, ' '
+        int 10h
+        
+        mov ah, 02h
+        mov dh, 18
+        mov dl, 1
+        add dl, wrong_msg_len
+        int 10h
+        mov ah, 0eh
+        mov al, ' '
+        int 10h 
+     restoreRegs      
+     ret      
+askNext endp
+
+showStatus proc  
+    saveRegs 
+    mov bp, offset correct_msg
+    printstr 17,1, correct_msg_len
+    mov ah, 02h
+    mov dh, 17
+    mov dl, 1
+    add dl, correct_msg_len
+    int 10h
+    mov ah, 0eh
+    mov al, correct_pos
+    add al, 30h
+    int 10h
+    
+    
+    mov bp, offset wrong_msg
+    printstr 18,1, wrong_msg_len
+    
+    mov ah, 02h
+    mov dh, 18
+    mov dl, 1
+    add dl, wrong_msg_len
+    int 10h
+    mov ah, 0eh
+    mov al, wrong_pos
+    add al, 30h
+    int 10h  
+    restoreRegs
+    ret
 evaluateInputs proc
     saveRegs    
     MOV SI, offset secret
@@ -120,29 +194,70 @@ evaluateInputs proc
     mov si, offset temp
     mov di, offset user_input
     mov cx, secLen
-    MOV DX, 0
+    xor dx, dx
     checkCorrectPos:
         MOV AL, [SI]
         MOV BL, [DI]
-        INC SI
-        INC DI
         CMP AL, BL
         JE  correct
+        INC SI
+        INC DI
         LOOP checkCorrectPos 
-        jmp check_eval
+        jmp checkWrongPos
         correct:
+            mov [si], '$'
+            mov [di], '$'
+            INC SI
+            INC DI
             INC DL
-            LOOP checkCorrectPos 
-     check_eval:
+            LOOP checkCorrectPos
+            jmp checkWrongPos
+     
+     checkWrongPos:
+     
+        
         MOV correct_pos, dl 
         CMP DX, secLen
         je  win 
+        xor dx, dx 
+        MOV di, offset user_input
+        MOV cx, secLen
+
+        ;int 3h 
+        checkWrongLoop:
+            MOV si, offset temp
+            mov al, [di] 
+            inc di
+            cmp al, '$'
+            je checked
+            push cx
+            mov cx, secLen 
+            tempLoop:
+                mov bl, [si]
+                cmp al, bl
+                je  wrongPos
+                inc si
+                loop tempLoop
+                pop cx
+                loop checkWrongLoop  
+                jmp exit_Eval
+            wrongPos:
+                inc dl
+                mov [si],'$'
+                inc si
+                pop cx
+                loop checkWrongLoop
+                jmp exit_Eval
+            checked:
+                loop checkWrongLoop   
+        mov wrong_pos, dl
         jmp exit_eval
      win:
         mov bp, offset win_msg
         printstr 5, 1, win_msg_len
         call exitGame
-     exit_eval:
+     exit_eval: 
+        mov wrong_pos, dl
         restoreRegs
      ret   
 
@@ -329,5 +444,21 @@ createSeed PROC
     POP     AX 
     RET
 createSeed ENDP
+               
+keyPress PROC
+        MOV     AH,08H            
+        INT     21H
+        CALL    toLower
+        RET
+keyPress ENDP   
 
+toLower PROC
+        CMP AL, 65    ;'A'
+        JB  CONTINUE ;IF THE KEY IS LESS THAN 'A' IT DOES NOTHING
+        CMP AL, 90    ;'Z'
+        JA  CONTINUE ;IF THE KEY IS GREATER THAN 'Z' IT DOES NOTHING
+        ADD AL, 32    ;Converts uppercase to lowercase.
+     CONTINUE:
+        RET
+toLower ENDP
 END
