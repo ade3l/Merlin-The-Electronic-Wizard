@@ -18,10 +18,12 @@ l2_msg db "Mystery number is between 100 - 999"
 l2_msg_len dw 35
 l3_msg db "Mystery number is between 1000 - 9999" 
 l3_msg_len dw 37
-user_input dw ""
+user_input dw "0000"
 secLen dw ? 
 diff db ?
-secret dw ?
+secret db "0000"
+temp db "0000"
+correct_pos db 0
 .code 
 saveRegs    MACRO
     PUSH    AX
@@ -93,11 +95,47 @@ start:
     call showRange
     call createSecret
     
+    lea bp, secret
+    printstr 5,1, secLen
+    
     call showHidden
     call getInputs
+    call evaluateInputs
     MOV     AX, 4C00H
     INT     21H 
+evaluateInputs proc
+    saveRegs    
+    MOV SI, offset secret
+    MOV DI, offset temp
+    mov cx, seclen
+    copyLoop:
+        MOV AL, [SI]          ; Load the current character from source into AL
+        MOV [DI], AL          ; Store the current character into dest
+        INC SI                ; Otherwise, increment both SI and DI to move to the next character
+        INC DI  
+        loop copyLoop
+    mov si, offset temp
+    mov di, offset user_input
+    mov cx, secLen
+    MOV DX, 0
+    checkCorrectPos:
+        MOV AL, [SI]
+        MOV BL, [DI]
+        INC SI
+        INC DI
+        CMP AL, BL
+        JE  correct
+        LOOP checkCorrectPos 
+        jmp exit_eval
+        correct:
+            INC DL
+            LOOP checkCorrectPos 
+     exit_eval:
+        MOV correct_pos, dl
+     restoreRegs
+     ret   
 
+evaluateInputs endp    
 getDiff proc 
     saveRegs
     getDiffLoop:
@@ -121,18 +159,21 @@ createSecret    proc
     je  createSecret2
     MOV lLimit, 1000
     MOV uLimit, 9999
-    mov secLen, 4 
+    mov cx, 4
+    mov secLen, cx 
     jmp getRand
     createSecret1:
         MOV lLimit, 10
-        MOV uLimit, 99 
-        mov secLen, 2
+        MOV uLimit, 99
+        mov cx, 2 
+        mov secLen, cx
         jmp getRand
         
     createSecret2:
         MOV lLimit, 100
-        MOV uLimit, 999
-        mov secLen, 3
+        MOV uLimit, 999  
+        mov cx, 3
+        mov secLen, cx
     getRand:
         CALL genRand 
    
@@ -209,7 +250,8 @@ showHidden  proc
 showHidden  endp
 
 getInputs proc
-    saveRegs
+    saveRegs 
+    int 3h
     mov cx, secLen
     mov dh, 12
     mov dl, 20
@@ -217,7 +259,7 @@ getInputs proc
     mov bh, 00h
     mov bl, 02h
     mov si, offset user_input
-    
+
     printIP:
         setCursor dh, dl        
         INT 21h   ; get character ip with echo          
@@ -225,7 +267,8 @@ getInputs proc
         inc si
         inc dl
         loop printIP
-    restoreRegs 
+    restoreRegs
+    ret 
 getInputs endp
 genRand PROC 
     
