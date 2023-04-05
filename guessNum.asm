@@ -109,8 +109,7 @@ start:
     call showRange
     call createSecret
     
-    lea bp, secret
-    printstr 5,1, secLen
+
     round:
         call showHidden
         call getInputs
@@ -128,7 +127,9 @@ askNext proc
     printStr    20, 1, next_msg_len
     call keyPress
     cmp al, 'n'
-    je choice_next
+    je choice_next 
+    cmp al, 'q'
+    je exitGame
     choice_next:
         mov ah, 02h
         mov dh, 17
@@ -263,6 +264,8 @@ evaluateInputs proc
 
 evaluateInputs endp
 exitGame PROC
+    lea bp, secret
+    printstr 6,1, secLen
     MOV AX, 4C00H
     INT 21H
     ret
