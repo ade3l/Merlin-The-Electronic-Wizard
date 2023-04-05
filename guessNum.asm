@@ -7,15 +7,18 @@ SEED    DW  ?
 uLimit  DW  ?
 lLimit  DW  1   
 diff_msg dw "Select your difficulty level 1-3:" 
-diff_msg_len equ $-diff_msg
+diff_msg_len equ $-diff_msg   
+
 selected_msg db "Selected level: "
-selected_msg_len equ    $-selected_msg
+selected_msg_len equ    $-selected_msg   
+
 l1_msg db "Mystery number is between 10 - 99" 
 l1_msg_len dw 33
 l2_msg db "Mystery number is between 100 - 999"
 l2_msg_len dw 35
 l3_msg db "Mystery number is between 1000 - 9999" 
 l3_msg_len dw 37
+user_input dw ""
 secLen dw ? 
 diff db ?
 secret dw ?
@@ -42,7 +45,7 @@ printStr  MACRO row, column, length
     ;print the string
     MOV     AX, 1301H 
     MOV     BH, 0
-    MOV     BL, 02H  
+    MOV     BL, 2H  
     MOV     DH, row
     MOV     DL, column  
     INT     10H
@@ -89,8 +92,9 @@ start:
     ;Show range 
     call showRange
     call createSecret
-    MOV BP, OFFSET SECRET
-    PRINTSTR 3, 1, SEClEN
+    
+    call showHidden
+    call getInputs
     MOV     AX, 4C00H
     INT     21H 
 
@@ -184,7 +188,45 @@ showRange   proc
         MOV BP,OFFSET l2_msg 
         printStr    2, 1, l2_msg_len
         ret         
+showRange ENDP
+
+showHidden  proc
+    saveRegs
+    mov cx, secLen
+    mov dh, 12
+    mov dl, 20
+    mov al, 'X'
+    mov bh, 00h
+    mov bl, 02h
+    printX:
+        setCursor dh, dl
+        mov ah, 0eh
+        int 10h  
+        inc dl
+        loop printX
+    restoreRegs 
+    ret 
+showHidden  endp
+
+getInputs proc
+    saveRegs
+    mov cx, secLen
+    mov dh, 12
+    mov dl, 20
+    MOV AH, 01h
+    mov bh, 00h
+    mov bl, 02h
+    mov si, offset user_input
     
+    printIP:
+        setCursor dh, dl        
+        INT 21h   ; get character ip with echo          
+        mov [si], al
+        inc si
+        inc dl
+        loop printIP
+    restoreRegs 
+getInputs endp
 genRand PROC 
     
     PUSH    AX
