@@ -13,14 +13,17 @@ selected_msg db "Selected level: "
 selected_msg_len equ    $-selected_msg   
 
 l1_msg db "Mystery number is between 10 - 99" 
-l1_msg_len dw 33
+l1_msg_len EQU $-l1_msg
 l2_msg db "Mystery number is between 100 - 999"
-l2_msg_len dw 35
+l2_msg_len EQU $-l2_msg
 l3_msg db "Mystery number is between 1000 - 9999" 
-l3_msg_len dw 37
+l3_msg_len EQU $-l3_msg 
+
+win_msg dw "You have won!"
+win_msg_len EQU $-win_msg
 user_input dw "0000"
 secLen dw ? 
-diff db ?
+diff db ?  
 secret db "0000"
 temp db "0000"
 correct_pos db 0
@@ -126,16 +129,29 @@ evaluateInputs proc
         CMP AL, BL
         JE  correct
         LOOP checkCorrectPos 
-        jmp exit_eval
+        jmp check_eval
         correct:
             INC DL
             LOOP checkCorrectPos 
+     check_eval:
+        MOV correct_pos, dl 
+        CMP DX, secLen
+        je  win 
+        jmp exit_eval
+     win:
+        mov bp, offset win_msg
+        printstr 5, 1, win_msg_len
+        call exitGame
      exit_eval:
-        MOV correct_pos, dl
-     restoreRegs
+        restoreRegs
      ret   
 
-evaluateInputs endp    
+evaluateInputs endp
+exitGame PROC
+    MOV AX, 4C00H
+    INT 21H
+    ret
+exitGame endp
 getDiff proc 
     saveRegs
     getDiffLoop:
@@ -234,8 +250,8 @@ showRange ENDP
 showHidden  proc
     saveRegs
     mov cx, secLen
-    mov dh, 12
-    mov dl, 20
+    mov dh, 10
+    mov dl, 30
     mov al, 'X'
     mov bh, 00h
     mov bl, 02h
@@ -251,10 +267,9 @@ showHidden  endp
 
 getInputs proc
     saveRegs 
-    int 3h
     mov cx, secLen
-    mov dh, 12
-    mov dl, 20
+    mov dh, 10
+    mov dl, 30
     MOV AH, 01h
     mov bh, 00h
     mov bl, 02h
