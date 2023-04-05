@@ -15,7 +15,8 @@ l1_msg_len dw 33
 l2_msg db "Mystery number is between 100 - 999"
 l2_msg_len dw 35
 l3_msg db "Mystery number is between 1000 - 9999" 
-l3_msg_len dw 37 
+l3_msg_len dw 37
+secLen dw ? 
 diff db ?
 secret dw ?
 .code 
@@ -88,6 +89,8 @@ start:
     ;Show range 
     call showRange
     call createSecret
+    MOV BP, OFFSET SECRET
+    PRINTSTR 3, 1, SEClEN
     MOV     AX, 4C00H
     INT     21H 
 
@@ -107,24 +110,59 @@ getDiff proc
 getDiff ENDP
 
 createSecret    proc
+    saveRegs
     cmp diff, 1
-    je  createSecret1,
+    je  createSecret1
     cmp diff, 2
     je  createSecret2
     MOV lLimit, 1000
-    MOV uLimit, 9999 
+    MOV uLimit, 9999
+    mov secLen, 4 
     jmp getRand
     createSecret1:
         MOV lLimit, 10
         MOV uLimit, 99 
+        mov secLen, 2
         jmp getRand
         
     createSecret2:
         MOV lLimit, 100
         MOV uLimit, 999
+        mov secLen, 3
     getRand:
-        CALL genRand
-        mov secret, DX
+        CALL genRand 
+   
+        MOV DI, OFFSET secret ; Pointer to the target string
+        MOV BX, 10        ; Divisor to extract the rightmost digit
+        MOV AX, DX        ; Copy the number to AX
+    
+        ExtractDigit:
+            XOR DX, DX        ; Clear DX to prepare for division
+            DIV BX            ; Divide by 10 to get the remainder in DX
+            ADD DL, '0'       ; Convert the remainder to ASCII code
+            MOV [DI], DL      ; Store the digit in the target string
+            INC DI            ; Increment the string pointer
+            TEST AX, AX       ; Check if quotient is zero
+            JNZ ExtractDigit  ; If not, repeat
+        
+            
+        
+            ; Reverse the string in place
+            MOV SI, OFFSET secret
+            DEC DI            ; Point to the last digit in the string
+        ReverseLoop:
+            CMP SI, DI        ; Check if pointers have crossed
+            JGE Done          ; If so, we're done
+            MOV AL, [SI]      ; Swap characters
+            MOV DL, [DI]
+            MOV [SI], DL
+            MOV [DI], AL
+            INC SI            ; Move pointers toward each other
+            DEC DI
+            JMP ReverseLoop
+            ; The reversed string is now in 'secret'
+    Done:        
+    restoreRegs
     ret
 createSecret endp 
 
