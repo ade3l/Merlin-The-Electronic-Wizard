@@ -7,7 +7,7 @@ start_square db "000000000"
 square db "000000000"
 square_win db "111101111"
 score_str db "SCORE"
-steps db 1 
+steps db 0 
 SEED        DW  ?
 uLimit      DB  3
 lLimit      DB  1
@@ -53,8 +53,7 @@ setCursor   MACRO   row, column
 endm 
 
 PRINTSQUARE MACRO: 
-    LEA DX, SQUARE
-    MOV SI, DX
+    MOV SI, offset SQUARE
     MOV DH, 11
     MOV DL, 35
     MOV CX, 3
@@ -128,7 +127,7 @@ copyStart   PROC
     MOV CX, 8
     copy:   
         mov aX, [di]
-        mov si, aX
+        mov [si], aX
         inc di
         inc si
         loop copy
@@ -167,25 +166,24 @@ updateSquare PROC
     cmp al, '8'
     je update_8
     cmp al, '9'
-    je update_9
+    je update_9 
+    cmp al, 27
+    je quitGame
     ; Invalid key pressed
     ret
     
     update_1: 
-        INC steps
         xor byte ptr [square + 0], 01h
         xor byte ptr [square + 1], 01h
         xor byte ptr [square + 3], 01h
         xor byte ptr [square + 4], 01h
         jmp exit_update
     update_2:    
-        INC steps
         xor byte ptr [square + 0], 01h
         xor byte ptr [square + 1], 01h
         xor byte ptr [square + 2], 01h
         jmp exit_update      
     update_3:    
-        INC steps
         xor byte ptr [square + 1], 01h
         xor byte ptr [square + 2], 01h
         xor byte ptr [square + 4], 01h
@@ -198,7 +196,6 @@ updateSquare PROC
         xor byte ptr [square + 6], 01h
         jmp exit_update  
     update_5:    
-        INC steps
         xor byte ptr [square + 1], 01h
         xor byte ptr [square + 3], 01h
         xor byte ptr [square + 4], 01h
@@ -206,40 +203,38 @@ updateSquare PROC
         xor byte ptr [square + 7], 01h
         jmp exit_update
     update_6:    
-        INC steps
         xor byte ptr [square + 2], 01h    
         xor byte ptr [square + 5], 01h    
         xor byte ptr [square + 8], 01h   
         jmp exit_update
     update_7: 
-        INC steps
         xor byte ptr [square + 3], 01h
         xor byte ptr [square + 4], 01h
         xor byte ptr [square + 6], 01h
         xor byte ptr [square + 7], 01h
         jmp exit_update
     update_8:    
-        INC steps
         xor byte ptr [square + 6], 01h
         xor byte ptr [square + 7], 01h
         xor byte ptr [square + 8], 01h
         jmp exit_update
     update_9:    
-        INC steps
         xor byte ptr [square + 4], 01h
         xor byte ptr [square + 5], 01h
         xor byte ptr [square + 7], 01h
         xor byte ptr [square + 8], 01h
         jmp exit_update
+    quitGame:
+        mov ax, 4c00h
+        int 21h
     exit_update:
+        INC steps
         ret
 updateSquare endp   
 
 
 printScore PROC
-    saveRegs
-    XOR     CX, CX
-     
+    saveRegs    
     MOV AL, STEPS
     ; Convert the hex value to decimal and store the digits in the stack
     MOV AH, 0         ; Initialize the quotient to 0
@@ -253,7 +248,7 @@ printScore PROC
         JNE DIV_LOOP      ; If not, continue dividing
     CMP STEPS, 9
     JA  PRINT
-    MOV AX, 30H
+    MOV AX, '0'
     PUSH    AX
     PRINT:
         setCursor   2, 12
