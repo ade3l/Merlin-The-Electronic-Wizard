@@ -8,11 +8,11 @@ SEED    DW  ?
 uLimit  DW  8
 lLimit  DW  1  
   
+diff_msg db "Select your difficulty level 1-9:" 
+diff_msg_len equ $-diff_msg   
 
 selected_msg db "Selected level: "
 selected_msg_len equ    $-selected_msg 
-diff_msg db "Select your difficulty level 1 9" 
-diff_msg_len equ $-diff_msg   
 
 tune_secret DB "000000000"
 diff    db ?
@@ -27,9 +27,6 @@ PLAY MACRO frequency
         CALL    activateSpkr 
         restoreRegs
 ENDM
-
-
-  
 
 saveRegs    MACRO
     PUSH    AX
@@ -62,7 +59,16 @@ endm
 CLRSCR MACRO
     mov ax, 3
     int 10h
-ENDM
+ENDM 
+
+pause MACRO
+        saveRegs
+        MOV     CX, 07H           
+        MOV     DX, 0A120H        
+        MOV     AH, 86H
+        INT     15H
+        restoreRegs
+endm
 setCursor   MACRO   row, column
     saveRegs
     MOV     AH, 02H
@@ -98,7 +104,6 @@ start:
     MOV CX, 1
     INT 10H
     
-    
     call createTune
                    
     LEA BP, TUNE_SECRET
@@ -131,7 +136,8 @@ playTune proc
     xor cx, cx
     mov cl, diff 
     
-    playNote: 
+    playNote:
+        pause 
         mov di, offset octave 
         mov dx, 2
         mov al, [si]
