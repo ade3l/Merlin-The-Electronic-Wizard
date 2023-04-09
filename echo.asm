@@ -15,7 +15,53 @@ selected_msg db "Selected level: "
 selected_msg_len equ    $-selected_msg 
 tune_secret DB "000000000"
 diff    db ?
+
 .code
+
+
+PLAY MACRO frequency               
+        MOV     AX,frequency       
+        CALL    setFreq
+        CALL    activateSpkr
+ENDM
+
+
+setFreq  PROC                   
+        OUT     42h, AL 
+        MOV     AL, AH
+        OUT     42h, AL 
+        RET
+setFreq  ENDP
+
+speakerOn  PROC                  
+        MOV AL, 182
+        OUT 43H, AL 
+        
+        IN      AL, 61h
+        OR      AL, 11B
+        OUT     61h, AL
+        RET
+speakerOn  ENDP
+
+speakerOff  PROC               
+        IN      AL, 61h
+        AND     AL, 11111100b
+        OUT     61h, AL
+        RET
+speakerOff  ENDP
+
+
+activateSpkr proc                      
+        CALL speakerOn           
+        
+        MOV     CX, 07H           
+        MOV     DX, 0A120H        
+        MOV     AH, 86H
+        INT     15H
+
+        CALL    speakerOff       
+        RET
+activateSpkr endp  
 
 saveRegs    MACRO
     PUSH    AX
@@ -86,7 +132,7 @@ start:
     
     
     call createTune
-                   
+    call playTune               
     LEA BP, TUNE_SECRET
     printstr 3, 1, 9
 MOV AX, 4C00H
