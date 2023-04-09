@@ -16,7 +16,10 @@ selected_msg_len equ    $-selected_msg
 
 tune_secret DB "000000000"
 diff    db ?
-octave dw 2280, 2031, 1809, 1715, 1521, 1355, 1207, 1140
+octave dw 2280, 2031, 1809, 1715, 1521, 1355, 1207, 1140  
+step_msg db "Level Number"
+step_msg_len equ $-step_msg 
+step dw 1
 .code
 
 
@@ -63,8 +66,8 @@ ENDM
 
 pause MACRO
         saveRegs
-        MOV     CX, 07H           
-        MOV     DX, 0A120H        
+        MOV     CX, 0fH           
+        MOV     DX, 423fH        
         MOV     AH, 86H
         INT     15H
         restoreRegs
@@ -109,7 +112,11 @@ start:
     LEA BP, TUNE_SECRET
     printstr 3, 1, 9  
     
-    call playTune
+    ;call playTune
+    LEA BP, step_msg
+    printstr 1, 40, step_msg_len 
+    call updateLevel
+    call playGame
 MOV AX, 4C00H
 INT 21H 
 ;---------------------------------------------------------------------------------------- 
@@ -153,14 +160,135 @@ playTune proc
     ret
 playTune endp
 
+playGame proc
+    saveRegs
+    round:
+    xor ax, ax 
+    xor cx, cx
+    mov cx, step
+    mov si, offset tune_secret
+    playSecret:
+        mov di, offset octave 
+        mov dx, 2
+        mov al, [si]
+        inc si
+        sub al, '0'
+        sub al, 1
+        mul dx  
+        add di, ax
+        mov bX, [di] 
+        play bx
+        loop playSecret
+    mov cx, step
+    mov si, offset tune_secret 
+    getIP:  
+        mov di, offset octave
+        call keyPress
+        cmp al, 'q'
+        jne k2
+        add di, 0
+        mov bx, [di]
+        play bx 
+        mov al, 1
+        jmp evaluate
+        
+        k2: cmp al, 'w'
+        jne k3
+        add di, 2
+        mov bx, [di]
+        play bx
+        mov al, 2
+        jmp evaluate 
+        
+        k3: cmp al, 'e'
+        jne k4
+        add di, 4
+        mov bx, [di]
+        play bx 
+        mov al, 3
+        jmp evaluate 
+        
+        k4: cmp al, 'r'
+        jne k5
+        add di, 6
+        mov bx, [di]
+        play bx  
+        mov al, 4
+        jmp evaluate
+        ch1:
+            jmp getIP
+        k5: cmp al, 't'
+        jne k6
+        add di, 8
+        mov bx, [di]
+        play bx 
+        mov al, 5
+        jmp evaluate
+        
+        k6: cmp al, 'y'
+        jne k7
+        add di, 10
+        mov bx, [di]
+        play bx  
+        mov al, 6
+        jmp evaluate
+        ch2: 
+            jmp ch1
+        k7: cmp al, 'u'
+        jne k8
+        add di, 12
+        mov bx, [di]
+        play bx 
+        mov al, 7
+        jmp evaluate
+        
+        k8: cmp al, 'i'
+        jne ch1
+        add di, 14
+        mov bx, [di]
+        play bx
+        mov al, 8
+        evaluate:  
+            add al, '0'
+            cmp al, [si]
+            jne incorrect
+            inc si
+            loop ch2
+    correct:
+        inc step
+        call updateLevel
+        pause
+        jmp round
+    incorrect:
+        mov ax, 4c00h
+        int 21h
+    ret
+    restoreRegs
+playGame endp
+updateLevel proc
+    saveRegs  
+    mov ah, 02h
+    mov dh, 3
+    mov dl, 46
+    int 10h
 
+    mov ax, step
+    add al, '0'
+    mov ah, 09h
+    mov bl, 03h
+    mov cx, 1
+    int 10h
+
+    restoreRegs
+    ret 
+updateLevel endp
 getDiff proc 
     saveRegs
     getDiffLoop:
         MOV     AH, 00H
         INT     16H
         CMP     AL, 39H
-        JG      getDiffLoop
+        JG      getDiffLoop   
         CMP     AL, 31H
         JL      getDiffLoop
         SUB     AL, 30H
@@ -218,7 +346,7 @@ genRand PROC
     MUL     BX
     ADD     AX, incr 
     MOV     SEED, AX
-    mov     cl, 4
+    mov     cl, 7
     shr     ax, cl                                     
     
     MOV     BX, uLimit
@@ -267,5 +395,3 @@ toLower PROC
         RET
 toLower ENDP
 END
-
-
