@@ -12,7 +12,8 @@ diff_msg dw "Select your difficulty level 1-9:"
 diff_msg_len equ $-diff_msg   
 
 selected_msg db "Selected level: "
-selected_msg_len equ    $-selected_msg
+selected_msg_len equ    $-selected_msg 
+diff    db ?
 .code
 
 saveRegs    MACRO
@@ -55,16 +56,36 @@ setCursor   MACRO   row, column
     INT     10H
     restoreRegs
 endm 
+;----------------------------------------------------------------------------------------
 start:
     MOV     AX,@data
     MOV     DS,AX 
     MOV     ES,AX
 
     PUSH    BP
-    MOV     BP,SP
+    MOV     BP,SP 
+    
+    CALL    createSeed
+    MOV BP,OFFSET diff_msg 
+    printStr    1, 1, diff_msg_len
+    call getDiff
 MOV AX, 4C00H
 INT 21H 
-
+;---------------------------------------------------------------------------------------- 
+getDiff proc 
+    saveRegs
+    getDiffLoop:
+        MOV     AH, 00H
+        INT     16H
+        CMP     AL, 39H
+        JG      getDiffLoop
+        CMP     AL, 31H
+        JL      getDiffLoop
+        SUB     AL, 30H
+        MOV     diff, AL 
+    restoreRegs
+    RET
+getDiff ENDP
 genRand PROC 
     
     PUSH    AX
