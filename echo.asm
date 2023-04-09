@@ -5,7 +5,7 @@
 mult    DW  25173
 incr    DW  13849          
 SEED    DW  ?
-uLimit  DW  ?
+uLimit  DW  8
 lLimit  DW  1  
   
 diff_msg dw "Select your difficulty level 1-9:" 
@@ -13,6 +13,7 @@ diff_msg_len equ $-diff_msg
 
 selected_msg db "Selected level: "
 selected_msg_len equ    $-selected_msg 
+tune_secret DB "000000000"
 diff    db ?
 .code
 
@@ -68,10 +69,43 @@ start:
     CALL    createSeed
     MOV BP,OFFSET diff_msg 
     printStr    1, 1, diff_msg_len
+    
+    
     call getDiff
+    CLRSCR
+    ;Show selected level---
+    MOV BP,OFFSET selected_msg 
+    printStr    1, 1, selected_msg_len
+    setCursor   1, selected_msg_len+1 
+    MOV AH, 09H
+    MOV AL, diff
+    ADD  AL, 30H
+    MOV BL, 02H
+    MOV CX, 1
+    INT 10H
+    
+    
+    call createTune
+                   
+    LEA BP, TUNE_SECRET
+    printstr 3, 1, 9
 MOV AX, 4C00H
 INT 21H 
 ;---------------------------------------------------------------------------------------- 
+createTune proc
+    saveRegs
+    XOR CX, CX
+    MOV CL, diff
+    mov si, offset tune_secret
+    createNote:
+        CALL    genRand 
+        ADD DL, '0'
+        mov [si], DL
+        inc si
+        LOOP createNote
+    restoreRegs
+    RET
+createTune endp
 getDiff proc 
     saveRegs
     getDiffLoop:
@@ -99,7 +133,7 @@ genRand PROC
     ADD     AX, incr 
     MOV     SEED, AX
     
-    shr     ax, 3                                     
+    shr     ax, 4                                     
     
     MOV     BX, uLimit
     
