@@ -8,11 +8,12 @@ SEED    DW  ?
 uLimit  DW  8
 lLimit  DW  1  
   
-diff_msg dw "Select your difficulty level 1-9:" 
-diff_msg_len equ $-diff_msg   
 
 selected_msg db "Selected level: "
 selected_msg_len equ    $-selected_msg 
+diff_msg db "Select your difficulty level 1 9" 
+diff_msg_len equ $-diff_msg   
+
 tune_secret DB "000000000"
 diff    db ?
 octave dw 2280, 2031, 1809, 1715, 1521, 1355, 1207, 1140
@@ -78,7 +79,7 @@ start:
 
     PUSH    BP
     MOV     BP,SP 
-    
+    CLRSCR    
     CALL    createSeed
     MOV BP,OFFSET diff_msg 
     printStr    1, 1, diff_msg_len
@@ -122,6 +123,29 @@ createTune proc
     RET
 createTune endp
 
+playTune proc
+    saveRegs
+    mov si, offset tune_secret
+    
+    xor ax, ax 
+    xor cx, cx
+    mov cl, diff 
+    
+    playNote: 
+        mov di, offset octave 
+        mov dx, 2
+        mov al, [si]
+        inc si
+        sub al, '0'
+        sub al, 1
+        mul dx  
+        add di, ax
+        mov bX, [di] 
+        play bx
+        loop playNote
+    restoreRegs
+    ret
+playTune endp
 
 
 getDiff proc 
@@ -188,8 +212,8 @@ genRand PROC
     MUL     BX
     ADD     AX, incr 
     MOV     SEED, AX
-    
-    shr     ax, 4                                     
+    mov     cl, 4
+    shr     ax, cl                                     
     
     MOV     BX, uLimit
     
