@@ -16,7 +16,7 @@ l1_msg db "Mystery number is between 10 - 99"
 l1_msg_len EQU $-l1_msg
 l2_msg db "Mystery number is between 100 - 999"
 l2_msg_len EQU $-l2_msg
-l3_msg db "Mystery number is between 1000 - 9999" 
+l3_msg db "Mystery number is between 1000 - 8192" 
 l3_msg_len EQU $-l3_msg 
 
 win_msg db "You have won!"
@@ -108,7 +108,8 @@ start:
     ;Show range 
     call showRange
     call createSecret
-    
+        lea bp, secret
+    printstr 6,1, secLen
 
     round:
         call showHidden
@@ -416,7 +417,7 @@ genRand PROC
     ADD     AX, incr 
     MOV     SEED, AX
     
-    shr     ax, 4                                     
+    shr     ax, 3                                     
     
     MOV     BX, uLimit
     SUB     BX, lLimit
