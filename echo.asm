@@ -20,6 +20,8 @@ octave dw 2280, 2031, 1809, 1715, 1521, 1355, 1207, 1140
 step_msg db "Level Number"
 step_msg_len equ $-step_msg 
 step dw 1
+won_msg db "You won!"
+won_msg_len equ $-won_msg
 .code
 
 
@@ -108,14 +110,15 @@ start:
     INT 10H
     
     call createTune
-                   
+    mov ax, 00
+    mov al, diff               
     LEA BP, TUNE_SECRET
-    printstr 3, 1, 9  
+    printstr 3, 1, ax 
     
     ;call playTune
     LEA BP, step_msg
-    printstr 1, 40, step_msg_len 
-    call updateLevel
+    ;printstr 1, 40, step_msg_len 
+    ;call updateLevel
     call playGame
 MOV AX, 4C00H
 INT 21H 
@@ -177,14 +180,18 @@ playGame proc
         mul dx  
         add di, ax
         mov bX, [di] 
-        play bx
+        play bx   
+        pause
         loop playSecret
     mov cx, step
     mov si, offset tune_secret 
     getIP:  
         mov di, offset octave
         call keyPress
-        cmp al, 'q'
+        cmp al, 27
+        jne k1
+        call exitGame
+        k1:cmp al, 'q'
         jne k2
         add di, 0
         mov bx, [di]
@@ -241,7 +248,8 @@ playGame proc
         play bx 
         mov al, 7
         jmp evaluate
-        
+        ch3:
+            jmp round
         k8: cmp al, 'i'
         jne ch1
         add di, 14
@@ -257,14 +265,36 @@ playGame proc
     correct:
         inc step
         call updateLevel
+        
+        pause
+        mov ax, step
+        mov bl, diff
+        cmp al, bl
+        jle ch3
+        call wonGame
+    incorrect:
+        play 9121
+        play 8126
+        play 9121
+        pause
         pause
         jmp round
-    incorrect:
-        mov ax, 4c00h
-        int 21h
     ret
     restoreRegs
 playGame endp
+
+exitGame proc
+    mov ax, 4c00h
+    int 21h
+exitGame endp
+wonGame proc
+    lea bp, won_msg
+    printstr 4,10, won_msg_len
+    play 4560
+    play 4063
+    play 4560 
+    call exitGame
+wonGame endp
 updateLevel proc
     saveRegs  
     mov ah, 02h
