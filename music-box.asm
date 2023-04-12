@@ -4,11 +4,29 @@
 .code
 ; Get a series of characters from the keyboard
 ; and store them in stack
+saveRegs    MACRO
+    PUSH    AX
+    PUSH    BX
+    PUSH    CX
+    PUSH    DX
+    PUSH    SI
+endm  
 
-PLAY MACRO frequency               ;This macro receives the tone
+restoreRegs MACRO
+    POP     SI
+    POP     DX
+    POP     CX
+    POP     BX
+    POP     AX
+endm
+
+PLAY MACRO frequency   
+        saveRegs
+               ;This macro receives the tone
         MOV     AX,frequency       ;and sends to call the procedures
         CALL    setFreq
         CALL    activateSpkr
+        restoreRegs
 ENDM
 
 ;SEND THE FREQUENCY IN TWO SEPARATE BYTES TO THE PORT.
@@ -117,9 +135,10 @@ PLAYBACK PROC
             CMP     AL,'i'
             JNE     beginPop 
             PLAY    1140
-        addCount:
-            ADD     BX, 1
-            JMP     beginPop
+        jmp beginPop    
+        ;addCount:
+        ;    ADD     BX, 1
+        ;    JMP     beginPop
 PLAYBACK ENDP
 
 ;------------------------------------------------------------------------------------
@@ -148,8 +167,55 @@ player PROC
     SAVEKEY:
         PUSH    AX  ;save the key pressed in the stack
         SUB     BP,02
-        INC     BX  ;increment the counter
+        INC     BX  ;increment the counter 
+        
+        cmp al, 'q'
+        jne k2
+        play 2280 
         JMP     BEGIN
+        
+        k2: cmp al, 'w'
+        jne k3
+        play 2031
+        JMP     BEGIN 
+        
+        k3: cmp al, 'e'
+        jne k4
+        play 1809 
+        JMP     BEGIN 
+        
+        k4: cmp al, 'r'
+        jne k5
+        play 1715
+        JMP     BEGIN
+        
+        ch1:
+            jmp begin
+            
+        k5: cmp al, 't'
+        jne k6
+        PLAY    1521
+        JMP     ch1
+        
+        k6: cmp al, 'y'
+        jne k7
+        PLAY    1355 
+        JMP     ch1 
+        
+        ch2: 
+            jmp ch1
+            
+        k7: cmp al, 'u'
+        jne k8
+        PLAY    1207 
+        JMP     ch2
+
+            
+        k8: cmp al, 'i'
+        jne ch2
+        PLAY    1140
+        JMP     ch2
+        
 
 player ENDP
 start:
