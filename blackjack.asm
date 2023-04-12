@@ -4,8 +4,6 @@
 mult        DW  25173
 incr        DW  13849          
 SEED        DW  ?
-uLimit      DB  12
-lLimit      DB  1
 welcome     DB  'Welcome to Blackjack$' 
 DHandMsg    DB  'Dealer Hand$'
 PHandMSg    DB  'Your Hand$'
@@ -32,7 +30,7 @@ playerRow   db  16
 playerCol   db  1
 currDCard   dW  0
 currPCard   dW  0 
-deck        db  65,50,51,52,53,54,55,56,56,74,81,75,42
+deck        db  65,50,51,52,53,54,55,56,57,74,81,75,42
 pScore db  ?
 dScore db  ?
 row db ?
@@ -130,7 +128,7 @@ start:
 ;---------------------------------------------------------------------------------------
 dealDealer    PROC    
     ;dealerHand
-    CALL    genRand 
+    genRand 12, 1
     PUSH    DX  
     MOV     AL, dealerSize 
     MOV     AH, 0
@@ -146,7 +144,7 @@ dealDealer    ENDP
 
 dealPlayer    PROC    
     ;playerHand
-    CALL    genRand 
+    genRand 12, 1
     PUSH    DX  
     MOV     AL, playerSize 
     MOV     AH, 0
@@ -289,14 +287,210 @@ printCard PROC
     mov al, character
     mov bl, 2
     mov cx, 1
-    int 10h 
+    int 10h
     
+    cmp al, '*'
+    je leavePrintCard
+    
+    push dx
+    genRand 4, 1
+    cmp dx, 1
+    je heart
+    cmp dx, 2
+    je spade
+    cmp dx, 3
+    je diamond
+    jmp club
+    heart:
+        pop dx 
+        drawHeart dh, dl
+        jmp leavePrintCard
+    spade:
+        pop dx 
+        drawSpade dh, dl
+        jmp leavePrintCard 
+    diamond:
+        pop dx 
+        drawDiamond dh, dl
+        jmp leavePrintCard
+        
+    club:
+        pop dx
+        drawClub dh, dl
+                       
+ 
+    leavePrintCard:
     pop dx
     pop cx
     pop bx
     pop ax
     ret
 endp
+printChar MACRO r, col, char
+    mov dh, r
+    mov dl, col
+    mov ah, 02
+    int 10h
+    mov ah, 09h
+    mov al, char
+    mov bl, 2
+    mov cx, 1
+    int 10h
+ENDm 
+
+drawHeart MACRO row, col
+    mov dh, row
+    mov dl, col     
+    
+    sub dh, 4
+    sub dl, 6
+    printChar dh, dl, 40
+    
+    dec dh
+    inc dl
+    printChar dh, dl, '_'
+    
+    add dh, 2
+    printChar dh, dl, 92
+    
+    inc dl
+    inc dh
+    printChar dh, dl, 92
+    
+    inc dl
+    printChar dh, dl, 47
+    
+    inc dl
+    dec dh
+    printChar dh, dl, 47
+    
+    sub dh, 2
+    printChar dh, dl, '_'
+    
+    inc dl
+    inc dh
+    printChar dh, dl, 41
+    
+    sub dl, 3
+    printChar dh, dl, 92
+    
+    inc dl
+    printChar dh, dl, 47 
+endm 
+
+drawDiamond MACRO row, col
+    mov dh, row
+    mov dl, col
+    
+    sub dh, 4
+    sub dl, 5
+    printChar dh, dl,  47
+    
+    inc dl
+    dec dh
+    printChar dh, dl,  47
+    
+    inc dl
+    printChar dh, dl,  92
+    
+    inc dl
+    add dh, 1
+    printChar dh, dl,  92
+    
+    inc dh
+    printChar dh, dl,  47
+    
+    dec dl
+    inc dh
+    printChar dh, dl,  47
+    
+    dec dl
+    printChar dh, dl,  92
+    
+    dec dl                
+    dec dh
+    printChar dh, dl,  92
+endm  
+
+drawSpade MACRO row, col
+    mov dh, row
+    mov dl, col
+    
+    sub dh, 3
+    sub dl, 6
+    printChar dh, dl, 40   
+    
+    inc dl
+    dec dh
+    printChar dh, dl, 47    
+    
+    inc dl
+    dec dh
+    printChar dh, dl, 127
+    
+    inc dl
+    inc dh
+    printChar dh, dl, 92
+    
+    inc dl
+    inc dh
+    printChar dh, dl, 41
+    
+    dec dl
+    printChar dh, dl, '_'
+    
+    dec dl
+    printChar dh, dl, ','
+    
+    dec dl
+    printChar dh, dl, '_'
+    
+    inc dh
+    inc dl 
+    printChar dh, dl, 'I'  
+
+endm                
+
+drawClub MACRO row, col    
+    mov dh, row
+    mov dl, col
+    
+    sub dh, 3
+    sub dl, 6
+    printChar dh, dl, 40   
+    
+    inc dl
+    dec dh
+    printChar dh, dl, 40 
+    
+    inc dl
+    dec dh
+    printChar dh, dl, '_'
+    
+    inc dl
+    inc dh
+    printChar dh, dl, 41
+    
+    inc dl
+    inc dh
+    printChar dh, dl, 41
+                         
+    dec dl
+    printChar dh, dl, '_'
+    
+    dec dl
+    printChar dh, dl, 'X'
+    
+    dec dl
+    printChar dh, dl, '_'
+    
+    inc dh
+    inc dl 
+    printChar dh, dl, 'Y'                  
+    
+
+endm    
+
 dispPHand   PROC
     MOV     BL, playerSize
     LEA     DX, playerHand
@@ -665,7 +859,7 @@ saveRegs    PROC
 saveRegs    ENDP
 
 ;Random number generator from https://github.com/ade3l/Pseudo-random-number-generator
-genRand PROC 
+genRand MACRO uLimit, lLimit 
     PUSH    AX
     PUSH    BX
     PUSH    CX
@@ -681,7 +875,6 @@ genRand PROC
     MOV     BX, 00
     ;Reducing the number to in the required range
     MOV     BL, uLimit
-    SUB     BL, lLimit
     
     MOV     DX,0
     DIV     BX
@@ -690,8 +883,7 @@ genRand PROC
     POP     CX
     POP     BX
     POP     AX 
-    RET
-genRand ENDP 
+ENDM 
 
 createSeed PROC
     PUSH    AX
