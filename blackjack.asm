@@ -26,15 +26,18 @@ dealerHand  db  10 dup (0)
 playerHand  db  10 dup (0)
 dealerSize  db  0
 playerSize  db  0 
-dealerRow   db  4
+dealerRow   db  3
 dealerCol   db  1
-playerRow   db  7
+playerRow   db  16
 playerCol   db  1
 currDCard   dW  0
 currPCard   dW  0 
 deck        db  65,50,51,52,53,54,55,56,56,74,81,75,42
 pScore db  ?
 dScore db  ?
+row db ?
+column db ?
+character db ?
 .code               
 
 printStr  MACRO row, column 
@@ -105,11 +108,11 @@ start:
     MOV     bp,sp
       
     LEA     BP, welcome
-    printStr   1,1
+    printStr   0,25
     LEA     BP, DHandMsg
-    printStr   3,1              
+    printStr   2,1              
     LEA     BP, PHandMsg
-    printStr   6,1 
+    printStr   14,1 
     LEA     BP, PTotalMsg
     printStr   14,15
 ;Initialise the game
@@ -157,6 +160,26 @@ dealPlayer    PROC
     RET
 dealPlayer    ENDP
     
+dispCardNew MACRO r, char, currCard
+    saveRegs                  
+    MOV     AH, 0 
+    LEA     DX, deck
+    DEC     AL
+    ADD     DX, AX
+    MOV     SI, DX
+    MOV     AL, [SI]
+    mov character, al
+    xor dx, dx
+    mov ax, currCard
+    mov bx, 11
+    ;int 3h
+    mul bx
+    mov row, r
+    mov column, al
+    
+    call printCard
+    restoreRegs
+ENDM
 
 dispDHand     PROC     
     dispNextDcard:   
@@ -170,9 +193,9 @@ dispDHand     PROC
           JE        exdispDHand 
           MOV       AL, [SI] 
           setCursor dealerRow, dealerCol
-          cmp       currDCard, 1
+          cmp       currDCard, 1, 
           je        dispMask
-          dispCard  AL 
+          dispCardNew  3, AL,currDCard
           
           updateDvals:   
               INC       currDCard
@@ -183,13 +206,97 @@ dispDHand     PROC
         
         dispMask:
            MOV      AL, 13
-           dispCard AL, dealerRow, dealerCol
+           dispCardNew 3, AL, 1
            jmp      updateDvals                              
    
     exdispDHand:    
         RET
 dispDHand     ENDP 
-
+printCard PROC 
+    push ax
+    push bx
+    push cx
+    push dx
+    ;top border
+    mov ah, 02h
+    mov dh, row
+    mov dl, column
+    inc dl
+    int 10h
+    mov ah, 09h
+    mov al, '-'
+    mov bl, 02
+    mov cx, 8
+    int 10h 
+    ;left border  
+    mov cx, 8
+    dec dl
+    print_left_border: 
+        inc dh
+        mov ah, 02h
+        int 10h 
+        push cx
+        mov ah, 09h
+        mov al, '|'
+        mov bl, 02 
+        mov cx, 1
+        int 10h 
+        pop cx
+        loop print_left_border
+    ;bottom border 
+    inc dh
+    inc dl
+    mov ah, 02h
+    int 10h
+    mov ah, 09h
+    mov al, '-'
+    mov bl, 02
+    mov cx, 8
+    int 10h 
+    
+    ;left border
+    mov cx, 8
+    add dl, 8 
+    print_right_border:
+        dec dh
+        mov ah, 02h
+        int 10h 
+        push cx
+        mov ah, 09h
+        mov al, '|'
+        mov bl, 02 
+        mov cx, 1
+        int 10h 
+        pop cx
+        loop print_right_border
+    mov dh, row
+    mov dl, column
+    add dh, 1
+    add dl, 1
+    mov ah, 02
+    int 10h
+    mov ah, 09h
+    mov al, character
+    mov bl, 2
+    mov cx, 1
+    int 10h 
+    
+    add dh, 7
+    add dl, 7
+    mov ah, 02
+    int 10h
+    mov ah, 09h
+    mov al, character
+    mov bl, 2
+    mov cx, 1
+    int 10h 
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+endp
 dispPHand   PROC
     MOV     BL, playerSize
     LEA     DX, playerHand
@@ -201,7 +308,7 @@ dispPHand   PROC
           JE        exdispPHand 
           MOV       AL, [SI] 
           setCursor playerRow, playerCol
-          dispCard  AL
+          dispCardNew   15,AL, currPCard
           INC       currPCard
           INC       playerCol
           INC       SI
@@ -215,8 +322,8 @@ dispPHand   ENDP
 checkP21     PROC
    saveRegs
    LEA      BP, msgClear
-   printstr 18,40
-   printstr 19,40
+   printstr 25,10
+   printstr 26,10
    MOV      BX, 00  ;TOTAL VALUE
    MOV      CX, 00  ;TOTAL NUMBER OF ACES
    LEA      DX, playerHand
@@ -314,11 +421,11 @@ checkPScore PROC
     pBust:
         ; Player has bust and lost the game
         LEA         BP, msgPbust
-        printstr    18, 40
+        printstr    25, 10
         CALL        endGame
     pWin:
         LEA         BP, msgPwin
-        printstr    18, 40
+        printstr    25, 10
         CALL        endGame     
     
     pContinue:
@@ -331,7 +438,7 @@ askHitOrStay PROC
     saveRegs
     ; Display message to ask player to hit or stay
     LEA BP, msgAskHitOrStay
-    printstr 18, 40
+    printstr 25, 10
     
     ; Wait for player input (h for hit, s for stay)
     CALL    KEYPRESS
@@ -344,13 +451,13 @@ askHitOrStay PROC
     
     ; Invalid input, ask again
     LEA BP, msgInvalidInput
-    printstr 18, 40
+    printstr 25, 10
     JMP askHitOrStay
     
     hit:
         ; Player chose to hit
         LEA BP, msgPlayerHit
-        printstr 19, 40
+        printstr 26, 10
         JMP hitP
         restoreRegs
         RET
@@ -358,7 +465,7 @@ askHitOrStay PROC
     stay:
         ; Player chose to stay
         LEA BP, msgPlayerStay
-        printstr 19, 40
+        printstr 26, 10
         JMP stayP
         restoreRegs
         RET
@@ -381,15 +488,15 @@ STAYP    PROC
     ADD DX, 1
     MOV SI, DX
     MOV AL, [SI]
-    dispCard AL
+    dispCardNew 3, AL, 1
     
     
     
     LEA      BP, msgClear
-    printstr 18,40
-    printstr 19,40 
+    printstr 25,10
+    printstr 26,10 
     LEA     BP, DTotalMsg
-    PRINTSTR    15, 15
+    PRINTSTR    14, 35
     d17Check:
         CALL    CalcDTotal
         CALL    showDScore
@@ -420,12 +527,12 @@ STAYP    PROC
     
     PLAYER_WIN:
         LEA BP, msgPlayerWin
-        PRINTSTR 18, 40
+        PRINTSTR 25, 10
         JMP END_GAME 
         
     DEALER_WIN:
         LEA BP, msgDealerWin
-        PRINTSTR 18, 40
+        PRINTSTR 25, 0
         JMP END_GAME
         
     END_GAME:
@@ -499,14 +606,14 @@ showDScore  PROC
     MOV AX, 30H
     PUSH    AX
     PRINT2:
-        setCursor   15, 28
+        setCursor   14, 50
         ; Pop each digit from the stack and print it to the screen
         POP AX
         MOV AH, 09H ; Set up the function code for printing a character
         MOV CX, 1
         MOV BL, 2
         INT 10H     ; Call the BIOS to print the character
-        setCursor   15, 29
+        setCursor   14, 51
         ; Pop each digit from the stack and print it to the screen
         POP AX
         MOV AH, 09H ; Set up the function code for printing a character
