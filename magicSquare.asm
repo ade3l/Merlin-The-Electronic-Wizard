@@ -9,7 +9,7 @@ square_win db "111101111"
 score_str db "SCORE"
 steps db 0 
 SEED        DW  ?
-uLimit      DB  3
+uLimit      DB  2
 lLimit      DB  1
 .code 
 
@@ -111,11 +111,11 @@ INT 21H
 
 genSquare PROC
     MOV SI, offset start_square 
-    MOV CX, 8
+    MOV CX, 9
     setValue:
         CALL genRand
-        ADD DX, 29
-        MOV SI, DX
+        ADD DX, 47
+        MOV [SI], DX
         INC SI
         LOOP setValue
       ret
@@ -124,7 +124,7 @@ genSquare   ENDP
 copyStart   PROC
     MOV dI, offset start_square 
     MOV si, offset square
-    MOV CX, 8
+    MOV CX, 9
     copy:   
         mov aX, [di]
         mov [si], aX
@@ -313,7 +313,6 @@ genRand PROC
     MOV     BX, 00
     ;Reducing the number to in the required range
     MOV     BL, uLimit
-    SUB     BL, lLimit
     
     MOV     DX,0
     DIV     BX
