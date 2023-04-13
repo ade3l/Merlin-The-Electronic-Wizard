@@ -7,7 +7,9 @@ start_square db "000000000"
 square db "000000000"
 square_win db "111101111"
 score_str db "SCORE"
-steps db 0 
+steps db 0    
+restart_msg db "Would you like to restart(y/n)"
+restart_msg_len equ $-restart_msg
 SEED        DW  ?
 uLimit      DB  2
 lLimit      DB  1
@@ -91,9 +93,11 @@ MOV DS, AX
 MOV ES, AX
 PUSH BP    
 MOV BP, SP 
-;PRINTSQUARE
+;PRINTSQUARE 
 call createSeed
 call genSquare
+RESTART:
+MOV STEPS, 0
 call copyStart 
 
 MOV BP, OFFSET SCORE_STR
@@ -105,7 +109,14 @@ loop1:
     call    evalSquare
     call    keyPress
     call    updateSquare
-    jmp loop1
+    jmp loop1 
+    
+MOV BP, OFFSET RESTART_MSG
+PRINTSTR 15, 1, RESTART_MSG_LEN
+call keypress
+cmp al, 'y'
+JE RESTART     
+
 MOV AX, 4C00H
 INT 21H   
 
@@ -294,7 +305,8 @@ saveRegs    PROC
     PUSH    CX
     PUSH    DX
     RET
-saveRegs    ENDP
+saveRegs    ENDP 
+
 
 ;Random number generator from https://github.com/ade3l/Pseudo-random-number-generator
 genRand PROC 
